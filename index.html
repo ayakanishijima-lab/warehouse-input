@@ -48,7 +48,7 @@ const DB_NAME="warehouseInputDB",DB_VERSION=1,STORE="records",MASTER="master";
 const KEYS=["warehouse","producer","field","cultivation","variety","size","unit"];
 const DEFAULT={warehouse:["倉庫1","倉庫2","倉庫3"],producer:[],field:[],cultivation:["有機","特栽","慣行"],variety:[],size:[],unit:["袋","kg"]};
 // Code.gsのWebアプリURLをここへ
-const SYNC_URL="ここにCode.gsのWebアプリURLを貼り付け";
+const SYNC_URL="https://script.google.com/macros/s/AKfycbz2n6MXTa8GIjq0GTDk0UekZlXg2Bv09xUUvyRe9cuVHxydEF0HAS10We5gSBSg3ycd/exec";
 
 function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VERSION);r.onupgradeneeded=()=>{const d=r.result;if(!d.objectStoreNames.contains(STORE))d.createObjectStore(STORE,{keyPath:"id",autoIncrement:true});if(!d.objectStoreNames.contains(MASTER))d.createObjectStore(MASTER,{keyPath:"key"});};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)})}
 async function put(store,obj){const d=await openDB();return new Promise((res,rej)=>{const t=d.transaction(store,"readwrite");t.objectStore(store).put(obj);t.oncomplete=res;t.onerror=()=>rej(t.error)})}
