@@ -36,7 +36,7 @@ input[type=number]{font-size:36px;text-align:right;min-height:82px}textarea{min-
 <div class="field"><label>5. 品種</label><select id="variety"><option value="">選択してください</option></select></div>
 <div class="field"><label>6. サイズ</label><select id="size"><option value="">選択してください</option></select></div>
 <div class="field"><label>7. 単位</label><select id="unit"><option value="">選択してください</option></select></div>
-<div class="field"><label>8. 数量</label><input id="quantity" type="number" inputmode="decimal" min="0" step="any" placeholder="数量を入力"></div>
+<div class="field"><label>8. 数量</label><input id="quantity" type="text" inputmode="decimal" min="0" step="any" placeholder="数量を入力"></div>
 <div class="field"><label>9. 備考</label><textarea id="note" placeholder="必要があれば入力してください"></textarea></div>
 <button id="saveButton" class="button" onclick="saveLocal()">10. 登録する</button>
 <button id="syncButton" class="button secondary" onclick="syncData()">Googleスプレッドシートへ同期</button>
