@@ -38,6 +38,7 @@ input[type=number]{font-size:36px;text-align:right;min-height:82px}textarea{min-
 <div class="field"><label>9. 備考</label><textarea id="note" placeholder="必要があれば入力してください"></textarea></div>
 <button id="saveButton" class="button" onclick="saveLocal()">10. 登録する</button>
 <button id="syncButton" class="button secondary" onclick="syncData()">Googleスプレッドシートへ同期</button>
+<button id="masterButton" class="button secondary" onclick="syncMaster()">マスタを更新</button>
 <div id="message" class="message"></div>
 <div class="history"><h2>12. 登録済み件数</h2><div id="count" style="font-size:28px;font-weight:700">0件</div><div id="history"></div></div>
 <div class="small" style="text-align:center;margin-top:12px">登録後も「倉庫番号～単位」はそのまま引き継ぎます。数量・備考だけ空欄になります。</div>
@@ -57,6 +58,19 @@ function msg(t,ok=true){const e=document.getElementById("message");e.textContent
 function status(){const e=document.getElementById("status");e.className="status "+(navigator.onLine?"online":"offline");e.textContent=navigator.onLine?"🟢 オンライン":"🔴 オフライン（端末内に保存します）"}
 function fill(id,a){const s=document.getElementById(id);s.innerHTML='<option value="">選択してください</option>';[...new Set(a||[])].filter(Boolean).forEach(v=>{const o=document.createElement("option");o.value=v;o.textContent=v;s.appendChild(o)})}
 async function loadMaster(){let a=await all(MASTER);if(!a.length){for(const k of KEYS)await put(MASTER,{key:k,values:DEFAULT[k]||[]});a=await all(MASTER)}const m=Object.fromEntries(a.map(x=>[x.key,x.values]));KEYS.forEach(k=>fill(k,m[k]));const last=JSON.parse(localStorage.getItem("lastInput")||"{}");KEYS.forEach(k=>setv(k,last[k]))}
+async function syncMaster(){
+ if(!navigator.onLine)return msg("現在オフラインです。電波が入ってからマスタを更新してください。",false);
+ if(SYNC_URL.startsWith("ここに"))return msg("SYNC_URLにCode.gsのWebアプリURLを設定してください。",false);
+ const b=document.getElementById("masterButton");b.disabled=true;b.textContent="マスタ更新中…";
+ try{
+   const r=await fetch(SYNC_URL+"?action=master&ts="+Date.now(),{method:"GET",cache:"no-store"});
+   const j=await r.json();
+   if(!j.ok)throw Error(j.message||"マスタ取得失敗");
+   for(const k of KEYS)await put(MASTER,{key:k,values:Array.isArray(j.master?.[k])?j.master[k]:[]});
+   await loadMaster();
+   msg("✓ マスタを更新しました。");
+ }catch(e){msg("マスタを更新できませんでした。\n"+e.message,false)}finally{b.disabled=false;b.textContent="マスタを更新"}
+}
 async function saveLocal(){
  const p={warehouse:val("warehouse"),producer:val("producer"),field:val("field"),cultivation:val("cultivation"),variety:val("variety"),size:val("size"),unit:val("unit"),quantity:val("quantity"),note:val("note")};
  for(const [k,n] of [["warehouse","倉庫番号"],["producer","生産者"],["field","圃場"],["cultivation","栽培方法"],["variety","品種"],["size","サイズ"],["unit","単位"]])if(!p[k])return msg(n+"を選択してください。",false);
@@ -77,7 +91,7 @@ async function syncData(){
  }catch(e){msg("同期できませんでした。\n"+e.message,false)}finally{b.disabled=false;b.textContent="Googleスプレッドシートへ同期"}
 }
 addEventListener("online",status);addEventListener("offline",status);
-addEventListener("load",async()=>{status();await loadMaster();await render();if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{})});
+addEventListener("load",async()=>{status();await loadMaster();if(navigator.onLine && !SYNC_URL.startsWith("ここに"))await syncMaster();await render();if("serviceWorker"in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{})});
 </script>
 </body>
 </html>
