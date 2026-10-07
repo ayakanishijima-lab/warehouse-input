@@ -47,6 +47,18 @@ body{
 .online{color:#2e7d32}
 .offline{color:#c62828}
 
+.edit-mode{
+  background:#fff3cd;
+  color:#856404;
+  border:3px solid #ffc107;
+  border-radius:12px;
+  padding:14px;
+  margin-bottom:18px;
+  font-size:22px;
+  font-weight:700;
+  text-align:center
+}
+
 .field{
   margin-bottom:20px
 }
@@ -85,9 +97,9 @@ select{
   padding-right:60px
 }
 
-/* ★ iPhoneの小数入力用 */
-input[type=text].quantity-input{
-  font-size:36px;
+/* iPhoneの小数入力対応 */
+.quantity-input{
+  font-size:36px !important;
   text-align:right;
   min-height:82px;
   -webkit-appearance:none;
@@ -120,6 +132,19 @@ textarea{
 .secondary{
   background:#455a64;
   margin-top:12px
+}
+
+.cancel-edit-button{
+  width:100%;
+  border:0;
+  border-radius:14px;
+  background:#757575;
+  color:#fff;
+  font-size:25px;
+  font-weight:700;
+  padding:16px 10px;
+  min-height:65px;
+  margin-top:10px
 }
 
 .message{
@@ -161,7 +186,7 @@ textarea{
 }
 
 .history-row{
-  padding:12px 0;
+  padding:14px 0;
   border-bottom:1px solid #ddd;
   font-size:18px;
   line-height:1.45
@@ -172,7 +197,13 @@ textarea{
 }
 
 .history-main{
-  margin-bottom:9px
+  margin-bottom:10px
+}
+
+.history-actions{
+  display:flex;
+  gap:8px;
+  flex-direction:column
 }
 
 .badge{
@@ -194,24 +225,28 @@ textarea{
   color:#155724
 }
 
-.cancelled{
-  background:#f8d7da;
-  color:#721c24
-}
-
-.cancel-button{
+.cancel-button,
+.edit-button{
   border:0;
   border-radius:10px;
-  background:#c62828;
   color:#fff;
   font-size:19px;
   font-weight:700;
   padding:10px 16px;
-  min-height:48px;
+  min-height:50px;
   width:100%
 }
 
-.cancel-button:disabled{
+.edit-button{
+  background:#1565c0
+}
+
+.cancel-button{
+  background:#c62828
+}
+
+.cancel-button:disabled,
+.edit-button:disabled{
   background:#999
 }
 
@@ -221,6 +256,7 @@ textarea{
 }
 
 @media(max-width:400px){
+
   label{
     font-size:28px
   }
@@ -234,17 +270,37 @@ textarea{
   .header{
     font-size:28px
   }
+
+  .quantity-input{
+    font-size:34px !important
+  }
 }
 </style>
 </head>
 
 <body>
 
-<div class="header">入庫・数量入力</div>
+<div class="header">
+  入庫・数量入力
+</div>
 
 <div class="container">
 
-<div id="status" class="status">確認中…</div>
+<div id="status" class="status">
+  確認中…
+</div>
+
+<!-- 修正モード表示 -->
+<div
+  id="editMode"
+  class="edit-mode"
+  style="display:none"
+>
+  ✏️ 修正モード
+  <br>
+  この登録を修正しています
+</div>
+
 
 <div class="field">
 <label>1. 倉庫番号</label>
@@ -253,12 +309,14 @@ textarea{
 </select>
 </div>
 
+
 <div class="field">
 <label>2. 生産者</label>
 <select id="producer">
 <option value="">選択してください</option>
 </select>
 </div>
+
 
 <div class="field">
 <label>3. 圃場</label>
@@ -267,12 +325,14 @@ textarea{
 </select>
 </div>
 
+
 <div class="field">
 <label>4. 栽培方法</label>
 <select id="cultivation">
 <option value="">選択してください</option>
 </select>
 </div>
+
 
 <div class="field">
 <label>5. 品種</label>
@@ -281,12 +341,14 @@ textarea{
 </select>
 </div>
 
+
 <div class="field">
 <label>6. サイズ</label>
 <select id="size">
 <option value="">選択してください</option>
 </select>
 </div>
+
 
 <div class="field">
 <label>7. 単位</label>
@@ -295,10 +357,10 @@ textarea{
 </select>
 </div>
 
+
 <div class="field">
 <label>8. 数量</label>
 
-<!-- ★ ここを type="text" + inputmode="decimal" に変更 -->
 <input
   id="quantity"
   class="quantity-input"
@@ -311,13 +373,17 @@ textarea{
 
 </div>
 
+
 <div class="field">
 <label>9. 備考</label>
+
 <textarea
   id="note"
   placeholder="必要があれば入力してください"
 ></textarea>
+
 </div>
+
 
 <button
   id="saveButton"
@@ -327,6 +393,17 @@ textarea{
 10. 登録する
 </button>
 
+
+<button
+  id="cancelEditButton"
+  class="cancel-edit-button"
+  onclick="cancelEditMode()"
+  style="display:none"
+>
+修正をやめる
+</button>
+
+
 <button
   id="syncButton"
   class="button secondary"
@@ -334,6 +411,7 @@ textarea{
 >
 Googleスプレッドシートへ同期
 </button>
+
 
 <button
   id="masterButton"
@@ -343,10 +421,18 @@ Googleスプレッドシートへ同期
 マスタを更新
 </button>
 
-<div id="message" class="message"></div>
+
+<div
+  id="message"
+  class="message"
+></div>
+
 
 <div class="history">
-<h2>12. 最新の登録履歴（3件）</h2>
+
+<h2>
+12. 最新の登録履歴（3件）
+</h2>
 
 <div
   id="count"
@@ -356,7 +442,9 @@ Googleスプレッドシートへ同期
 </div>
 
 <div id="history"></div>
+
 </div>
+
 
 <div
   class="small"
@@ -364,18 +452,20 @@ Googleスプレッドシートへ同期
 >
 登録後も「倉庫番号～単位」はそのまま引き継ぎます。
 数量・備考だけ空欄になります。<br>
-間違えた登録は、最新履歴の「この登録を取消」で取り消せます。
+間違えた登録は「取消」、内容を直したい場合は「修正」を押してください。
 </div>
 
 </div>
+
 
 <script>
 
-const DB_NAME="warehouseInputDB",
-DB_VERSION=2,
-STORE="records",
-MASTER="master",
-CANCELS="cancels";
+const DB_NAME="warehouseInputDB";
+const DB_VERSION=2;
+const STORE="records";
+const MASTER="master";
+const CANCELS="cancels";
+
 
 const KEYS=[
   "warehouse",
@@ -387,134 +477,233 @@ const KEYS=[
   "unit"
 ];
 
+
 const DEFAULT={
-  warehouse:["倉庫1","倉庫2","倉庫3"],
+  warehouse:[
+    "倉庫1",
+    "倉庫2",
+    "倉庫3"
+  ],
   producer:[],
   field:[],
-  cultivation:["有機","特栽","慣行"],
+  cultivation:[
+    "有機",
+    "特栽",
+    "慣行"
+  ],
   variety:[],
   size:[],
-  unit:["袋","kg"]
+  unit:[
+    "袋",
+    "kg"
+  ]
 };
+
 
 // Code.gsのWebアプリURL
 const SYNC_URL=
 "https://script.google.com/macros/s/AKfycbz2n6MXTa8GIjq0GTDk0UekZlXg2Bv09xUUvyRe9cuVHxydEF0HAS10We5gSBSg3ycd/exec";
 
 
+// 現在修正中のローカルID
+let editingId=null;
+
+
+/* =========================
+   IndexedDB
+========================= */
+
 function openDB(){
 
-  return new Promise((resolve,reject)=>{
+  return new Promise(
+    (resolve,reject)=>{
 
-    const r=indexedDB.open(
-      DB_NAME,
-      DB_VERSION
-    );
-
-    r.onupgradeneeded=()=>{
-
-      const d=r.result;
-
-      if(!d.objectStoreNames.contains(STORE))
-        d.createObjectStore(
-          STORE,
-          {
-            keyPath:"id",
-            autoIncrement:true
-          }
+      const r=
+        indexedDB.open(
+          DB_NAME,
+          DB_VERSION
         );
 
-      if(!d.objectStoreNames.contains(MASTER))
-        d.createObjectStore(
-          MASTER,
-          {
-            keyPath:"key"
-          }
+
+      r.onupgradeneeded=()=>{
+
+        const d=r.result;
+
+
+        if(
+          !d.objectStoreNames.contains(
+            STORE
+          )
+        ){
+
+          d.createObjectStore(
+            STORE,
+            {
+              keyPath:"id",
+              autoIncrement:true
+            }
+          );
+
+        }
+
+
+        if(
+          !d.objectStoreNames.contains(
+            MASTER
+          )
+        ){
+
+          d.createObjectStore(
+            MASTER,
+            {
+              keyPath:"key"
+            }
+          );
+
+        }
+
+
+        if(
+          !d.objectStoreNames.contains(
+            CANCELS
+          )
+        ){
+
+          d.createObjectStore(
+            CANCELS,
+            {
+              keyPath:"id",
+              autoIncrement:true
+            }
+          );
+
+        }
+
+      };
+
+
+      r.onsuccess=()=>
+        resolve(r.result);
+
+
+      r.onerror=()=>
+        reject(r.error);
+
+    }
+  );
+
+}
+
+
+async function put(
+  store,
+  obj
+){
+
+  const d=
+    await openDB();
+
+
+  return new Promise(
+    (res,rej)=>{
+
+      const t=
+        d.transaction(
+          store,
+          "readwrite"
         );
 
-      if(!d.objectStoreNames.contains(CANCELS))
-        d.createObjectStore(
-          CANCELS,
-          {
-            keyPath:"id",
-            autoIncrement:true
-          }
+
+      t.objectStore(
+        store
+      ).put(obj);
+
+
+      t.oncomplete=res;
+
+
+      t.onerror=()=>
+        rej(t.error);
+
+    }
+  );
+
+}
+
+
+async function del(
+  store,
+  key
+){
+
+  const d=
+    await openDB();
+
+
+  return new Promise(
+    (res,rej)=>{
+
+      const t=
+        d.transaction(
+          store,
+          "readwrite"
         );
 
-    };
 
-    r.onsuccess=()=>resolve(r.result);
-
-    r.onerror=()=>reject(r.error);
-
-  });
-
-}
+      t.objectStore(
+        store
+      ).delete(key);
 
 
-async function put(store,obj){
+      t.oncomplete=res;
 
-  const d=await openDB();
 
-  return new Promise((res,rej)=>{
+      t.onerror=()=>
+        rej(t.error);
 
-    const t=d.transaction(
-      store,
-      "readwrite"
-    );
-
-    t.objectStore(store).put(obj);
-
-    t.oncomplete=res;
-
-    t.onerror=()=>rej(t.error);
-
-  });
+    }
+  );
 
 }
 
 
-async function del(store,key){
+async function all(
+  store
+){
 
-  const d=await openDB();
-
-  return new Promise((res,rej)=>{
-
-    const t=d.transaction(
-      store,
-      "readwrite"
-    );
-
-    t.objectStore(store).delete(key);
-
-    t.oncomplete=res;
-
-    t.onerror=()=>rej(t.error);
-
-  });
-
-}
+  const d=
+    await openDB();
 
 
-async function all(store){
+  return new Promise(
+    (res,rej)=>{
 
-  const d=await openDB();
+      const r=
+        d
+        .transaction(
+          store,
+          "readonly"
+        )
+        .objectStore(store)
+        .getAll();
 
-  return new Promise((res,rej)=>{
 
-    const r=d
-      .transaction(store,"readonly")
-      .objectStore(store)
-      .getAll();
+      r.onsuccess=()=>
+        res(r.result);
 
-    r.onsuccess=()=>res(r.result);
 
-    r.onerror=()=>rej(r.error);
+      r.onerror=()=>
+        rej(r.error);
 
-  });
+    }
+  );
 
 }
 
+
+/* =========================
+   共通
+========================= */
 
 function val(id){
 
@@ -530,20 +719,34 @@ function setv(id,v){
 
   document
     .getElementById(id)
-    .value=v||"";
+    .value=
+      v||"";
 
 }
 
 
-function msg(t,ok=true){
+function msg(
+  t,
+  ok=true
+){
 
-  const e=document.getElementById("message");
+  const e=
+    document.getElementById(
+      "message"
+    );
+
 
   e.textContent=t;
 
+
   e.className=
     "message "+
-    (ok?"success":"error");
+    (
+      ok
+      ?"success"
+      :"error"
+    );
+
 
   setTimeout(
     ()=>{
@@ -557,7 +760,11 @@ function msg(t,ok=true){
 
 function status(){
 
-  const e=document.getElementById("status");
+  const e=
+    document.getElementById(
+      "status"
+    );
+
 
   e.className=
     "status "+
@@ -567,6 +774,7 @@ function status(){
       :"offline"
     );
 
+
   e.textContent=
     navigator.onLine
     ?"🟢 オンライン"
@@ -575,28 +783,40 @@ function status(){
 }
 
 
-function fill(id,a){
+function fill(
+  id,
+  a
+){
 
-  const s=document.getElementById(id);
+  const s=
+    document.getElementById(id);
+
 
   s.innerHTML=
     '<option value="">選択してください</option>';
+
 
   [
     ...new Set(a||[])
   ]
   .filter(Boolean)
-  .forEach(v=>{
+  .forEach(
+    v=>{
 
-    const o=document.createElement("option");
+      const o=
+        document.createElement(
+          "option"
+        );
 
-    o.value=v;
 
-    o.textContent=v;
+      o.value=v;
+      o.textContent=v;
 
-    s.appendChild(o);
 
-  });
+      s.appendChild(o);
+
+    }
+  );
 
 }
 
@@ -606,8 +826,12 @@ function newId(){
   if(
     window.crypto &&
     crypto.randomUUID
-  )
+  ){
+
     return crypto.randomUUID();
+
+  }
+
 
   return Date.now().toString(36)+
     "-"+
@@ -618,25 +842,39 @@ function newId(){
 }
 
 
+/* =========================
+   マスタ
+========================= */
+
 async function loadMaster(){
 
-  let a=await all(MASTER);
+  let a=
+    await all(MASTER);
+
 
   if(!a.length){
 
-    for(const k of KEYS)
+    for(
+      const k of KEYS
+    ){
 
       await put(
         MASTER,
         {
           key:k,
-          values:DEFAULT[k]||[]
+          values:
+            DEFAULT[k]||[]
         }
       );
 
-    a=await all(MASTER);
+    }
+
+
+    a=
+      await all(MASTER);
 
   }
+
 
   const m=
     Object.fromEntries(
@@ -648,9 +886,15 @@ async function loadMaster(){
       )
     );
 
+
   KEYS.forEach(
-    k=>fill(k,m[k])
+    k=>
+      fill(
+        k,
+        m[k]
+      )
   );
+
 
   const last=
     JSON.parse(
@@ -659,8 +903,13 @@ async function loadMaster(){
       )||"{}"
     );
 
+
   KEYS.forEach(
-    k=>setv(k,last[k])
+    k=>
+      setv(
+        k,
+        last[k]
+      )
   );
 
 }
@@ -668,31 +917,38 @@ async function loadMaster(){
 
 async function syncMaster(){
 
-  if(!navigator.onLine)
+  if(!navigator.onLine){
 
     return msg(
       "現在オフラインです。電波が入ってからマスタを更新してください。",
       false
     );
 
+  }
+
+
   if(
     SYNC_URL.startsWith("ここに")
-  )
+  ){
 
     return msg(
       "SYNC_URLにCode.gsのWebアプリURLを設定してください。",
       false
     );
 
+  }
+
+
   const b=
     document.getElementById(
       "masterButton"
     );
 
-  b.disabled=true;
 
+  b.disabled=true;
   b.textContent=
     "マスタ更新中…";
+
 
   try{
 
@@ -707,15 +963,24 @@ async function syncMaster(){
         }
       );
 
-    const j=await r.json();
 
-    if(!j.ok)
+    const j=
+      await r.json();
+
+
+    if(!j.ok){
+
       throw Error(
         j.message||
         "マスタ取得失敗"
       );
 
-    for(const k of KEYS)
+    }
+
+
+    for(
+      const k of KEYS
+    ){
 
       await put(
         MASTER,
@@ -730,11 +995,16 @@ async function syncMaster(){
         }
       );
 
+    }
+
+
     await loadMaster();
+
 
     msg(
       "✓ マスタを更新しました。"
     );
+
 
   }catch(e){
 
@@ -756,27 +1026,31 @@ async function syncMaster(){
 }
 
 
-async function saveLocal(){
+/* =========================
+   入力値取得
+========================= */
 
-  /*
-   * ★ iPhone対策
-   *
-   * type="text"で取得した数量を
-   * 前後の空白を削除して処理します。
-   *
-   * 「,」が入力された場合は
-   * 「.」に変換します。
-   */
+function getFormData(){
 
   let quantityText=
     val("quantity");
+
+
+  /*
+   * iPhone対策
+   *
+   * 全角ピリオド
+   * カンマ
+   * を半角ピリオドに統一
+   */
 
   quantityText=
     quantityText
       .replace(/,/g,".")
       .replace(/．/g,".");
 
-  const p={
+
+  return {
 
     warehouse:
       val("warehouse"),
@@ -807,21 +1081,56 @@ async function saveLocal(){
 
   };
 
+}
+
+
+/* =========================
+   通常登録・修正登録
+========================= */
+
+async function saveLocal(){
+
+  const p=
+    getFormData();
+
+
+  /* 必須項目 */
 
   for(
     const [k,n]
     of [
-      ["warehouse","倉庫番号"],
-      ["producer","生産者"],
-      ["field","圃場"],
-      ["cultivation","栽培方法"],
-      ["variety","品種"],
-      ["size","サイズ"],
-      ["unit","単位"]
+      [
+        "warehouse",
+        "倉庫番号"
+      ],
+      [
+        "producer",
+        "生産者"
+      ],
+      [
+        "field",
+        "圃場"
+      ],
+      [
+        "cultivation",
+        "栽培方法"
+      ],
+      [
+        "variety",
+        "品種"
+      ],
+      [
+        "size",
+        "サイズ"
+      ],
+      [
+        "unit",
+        "単位"
+      ]
     ]
   ){
 
-    if(!p[k])
+    if(!p[k]){
 
       return msg(
         n+
@@ -829,33 +1138,30 @@ async function saveLocal(){
         false
       );
 
+    }
+
   }
 
+
+  /* 数量 */
 
   if(
     p.quantity===
     ""
-  )
+  ){
 
     return msg(
       "数量を入力してください。",
       false
     );
 
+  }
 
-  /*
-   * ★ 小数対応
-   *
-   * 1
-   * 1.5
-   * 2.25
-   * 0.5
-   *
-   * などを受け付けます。
-   */
 
   const numericQuantity=
-    Number(p.quantity);
+    Number(
+      p.quantity
+    );
 
 
   if(
@@ -863,29 +1169,30 @@ async function saveLocal(){
       numericQuantity
     )||
     numericQuantity<0
-  )
+  ){
 
     return msg(
       "数量は0以上の数字で入力してください。",
       false
     );
 
+  }
 
-  /*
-   * Google Sheetsへ送る値も
-   * 数値として保存する
-   */
 
   p.quantity=
     numericQuantity;
 
 
+  /* 前回選択を保存 */
+
   const last={
     ...p
   };
 
+
   delete last.quantity;
   delete last.note;
+
 
   localStorage.setItem(
     "lastInput",
@@ -893,15 +1200,48 @@ async function saveLocal(){
   );
 
 
+  /*
+   * =========================
+   * 修正モード
+   * =========================
+   */
+
+  if(
+    editingId!==null
+  ){
+
+    await saveEditedRecord(
+      p
+    );
+
+    return;
+
+  }
+
+
+  /*
+   * =========================
+   * 通常登録
+   * =========================
+   */
+
   await put(
     STORE,
     {
-      localId:newId(),
+
+      localId:
+        newId(),
+
       createdAt:
-        new Date().toISOString(),
+        new Date()
+          .toISOString(),
+
       ...p,
+
       synced:false,
+
       cancelRequested:false
+
     }
   );
 
@@ -911,10 +1251,10 @@ async function saveLocal(){
     ""
   );
 
+
   setv(
     "note",
-    ""
-  );
+    "");
 
 
   msg(
@@ -939,24 +1279,471 @@ async function saveLocal(){
 }
 
 
+/* =========================
+   修正処理
+========================= */
+
+async function saveEditedRecord(
+  p
+){
+
+  const a=
+    await all(STORE);
+
+
+  const old=
+    a.find(
+      x=>
+        x.id===
+        editingId
+    );
+
+
+  if(!old){
+
+    cancelEditMode();
+
+    return msg(
+      "修正対象の登録が見つかりませんでした。",
+      false
+    );
+
+  }
+
+
+  /*
+   * 元の登録を
+   * 取消ログへ記録
+   */
+
+  const cancelLog={
+
+    createdAt:
+      old.createdAt,
+
+    localId:
+      old.localId,
+
+    warehouse:
+      old.warehouse,
+
+    producer:
+      old.producer,
+
+    field:
+      old.field,
+
+    cultivation:
+      old.cultivation,
+
+    variety:
+      old.variety,
+
+    size:
+      old.size,
+
+    unit:
+      old.unit,
+
+    quantity:
+      old.quantity,
+
+    note:
+      old.note,
+
+    cancelReason:
+      "修正"
+
+  };
+
+
+  await put(
+    CANCELS,
+    {
+      ...cancelLog,
+      logged:false
+    }
+  );
+
+
+  /*
+   * 元データがすでに
+   * Google Sheetsへ同期済みなら、
+   * 後で元のデータを削除する。
+   */
+
+  if(
+    old.synced
+  ){
+
+    old.cancelRequested=
+      true;
+
+    await put(
+      STORE,
+      old
+    );
+
+  }else{
+
+    /*
+     * まだ同期していない
+     * 元データなら、
+     * Google Sheetsには存在しないので
+     * 端末からそのまま削除。
+     */
+
+    await del(
+      STORE,
+      old.id
+    );
+
+  }
+
+
+  /*
+   * 修正後の新しい登録を作成
+   */
+
+  await put(
+    STORE,
+    {
+
+      localId:
+        newId(),
+
+      createdAt:
+        new Date()
+          .toISOString(),
+
+      ...p,
+
+      synced:false,
+
+      cancelRequested:false
+
+    }
+  );
+
+
+  /* 修正モード解除 */
+
+  editingId=null;
+
+
+  document
+    .getElementById(
+      "editMode"
+    )
+    .style.display=
+      "none";
+
+
+  document
+    .getElementById(
+      "cancelEditButton"
+    )
+    .style.display=
+      "none";
+
+
+  document
+    .getElementById(
+      "saveButton"
+    )
+    .textContent=
+      "10. 登録する";
+
+
+  setv(
+    "quantity",
+    ""
+  );
+
+
+  setv(
+    "note",
+    "");
+
+
+  msg(
+    "✓ 登録内容を修正しました。\n元の登録は取消ログに記録しました。"
+  );
+
+
+  render();
+
+
+  /*
+   * オンラインなら
+   * すぐ同期
+   */
+
+  if(
+    navigator.onLine
+  ){
+
+    await syncData();
+
+  }
+
+
+  setTimeout(
+    ()=>{
+      document
+        .getElementById(
+          "quantity"
+        )
+        .focus();
+    },
+    50
+  );
+
+}
+
+
+/* =========================
+   修正モード開始
+========================= */
+
+async function editRecord(
+  id
+){
+
+  const a=
+    await all(STORE);
+
+
+  const r=
+    a.find(
+      x=>x.id===id
+    );
+
+
+  if(!r)
+    return;
+
+
+  if(
+    !confirm(
+      "この登録を修正しますか？\n\n"+
+      r.warehouse+
+      " / "+
+      r.producer+
+      " / "+
+      r.field+
+      "\n"+
+      r.quantity+
+      r.unit
+    )
+  ){
+
+    return;
+
+  }
+
+
+  editingId=
+    id;
+
+
+  /*
+   * 登録内容を
+   * 入力欄へ戻す
+   */
+
+  setv(
+    "warehouse",
+    r.warehouse
+  );
+
+  setv(
+    "producer",
+    r.producer
+  );
+
+  setv(
+    "field",
+    r.field
+  );
+
+  setv(
+    "cultivation",
+    r.cultivation
+  );
+
+  setv(
+    "variety",
+    r.variety
+  );
+
+  setv(
+    "size",
+    r.size
+  );
+
+  setv(
+    "unit",
+    r.unit
+  );
+
+
+  /*
+   * 数量は文字列でセット
+   * iPhoneの入力欄でも
+   * 小数を維持
+   */
+
+  setv(
+    "quantity",
+    String(
+      r.quantity
+    )
+  );
+
+
+  setv(
+    "note",
+    r.note
+  );
+
+
+  /*
+   * 修正モード表示
+   */
+
+  document
+    .getElementById(
+      "editMode"
+    )
+    .style.display=
+      "block";
+
+
+  document
+    .getElementById(
+      "cancelEditButton"
+    )
+    .style.display=
+      "block";
+
+
+  document
+    .getElementById(
+      "saveButton"
+    )
+    .textContent=
+      "✏️ 修正して登録";
+
+
+  /*
+   * 画面上部へ移動
+   */
+
+  window.scrollTo({
+    top:0,
+    behavior:"smooth"
+  });
+
+
+  setTimeout(
+    ()=>{
+      document
+        .getElementById(
+          "quantity"
+        )
+        .focus();
+    },
+    400
+  );
+
+}
+
+
+/* =========================
+   修正キャンセル
+========================= */
+
+function cancelEditMode(){
+
+  editingId=
+    null;
+
+
+  document
+    .getElementById(
+      "editMode"
+    )
+    .style.display=
+      "none";
+
+
+  document
+    .getElementById(
+      "cancelEditButton"
+    )
+    .style.display=
+      "none";
+
+
+  document
+    .getElementById(
+      "saveButton"
+    )
+    .textContent=
+      "10. 登録する";
+
+
+  /*
+   * 数量と備考だけクリア
+   * 選択内容は引き継ぐ
+   */
+
+  setv(
+    "quantity",
+    ""
+  );
+
+  setv(
+    "note",
+    "");
+
+
+  msg(
+    "修正をキャンセルしました。"
+  );
+
+}
+
+
+/* =========================
+   最新3件表示
+========================= */
+
 async function render(){
 
   const a=
     await all(STORE);
 
+
   const active=
     a.filter(
-      x=>!x.cancelRequested
+      x=>
+        !x.cancelRequested
     );
+
 
   const pending=
     active.filter(
-      x=>!x.synced
+      x=>
+        !x.synced
     ).length;
 
 
   document
-    .getElementById("count")
+    .getElementById(
+      "count"
+    )
     .textContent=
       active.length+
       "件（未同期 "+
@@ -964,26 +1751,31 @@ async function render(){
       "件）";
 
 
+  /*
+   * 最新3件
+   */
+
   const latest=
-    a
-      .filter(
-        x=>!x.cancelRequested
-      )
+    active
       .slice(-3)
       .reverse();
 
 
   document
-    .getElementById("history")
+    .getElementById(
+      "history"
+    )
     .innerHTML=
 
-      latest.map(
+      latest
+      .map(
         r=>{
 
           const d=
             new Date(
               r.createdAt
             );
+
 
           return `
 
@@ -996,20 +1788,21 @@ ${d.toLocaleString("ja-JP")}
 <br>
 
 ${r.warehouse}
-/
+ /
 ${r.producer}
-/
+ /
 ${r.field}
-/
+ /
 ${r.cultivation}
-/
+ /
 ${r.variety}
-/
+ /
 ${r.size}
-/
+ /
 ${r.quantity}${r.unit}
 
-${r.note
+${
+  r.note
   ?" / "+r.note
   :""
 }
@@ -1019,16 +1812,25 @@ ${r.note
   ?"synced"
   :"pending"
 }">
-
 ${
   r.synced
   ?"同期済み"
   :"未同期"
 }
-
 </span>
 
 </div>
+
+
+<div class="history-actions">
+
+<button
+  class="edit-button"
+  onclick="editRecord(${r.id})"
+>
+✏️ この登録を修正
+</button>
+
 
 <button
   class="cancel-button"
@@ -1036,6 +1838,8 @@ ${
 >
 ↩ この登録を取消
 </button>
+
+</div>
 
 </div>
 
@@ -1048,17 +1852,26 @@ ${
 }
 
 
-async function cancelRecord(id){
+/* =========================
+   取消処理
+========================= */
+
+async function cancelRecord(
+  id
+){
 
   const a=
     await all(STORE);
+
 
   const r=
     a.find(
       x=>x.id===id
     );
 
-  if(!r)return;
+
+  if(!r)
+    return;
 
 
   if(
@@ -1073,8 +1886,11 @@ async function cancelRecord(id){
       r.quantity+
       r.unit
     )
-  )
+  ){
+
     return;
+
+  }
 
 
   const cancelLog={
@@ -1127,6 +1943,11 @@ async function cancelRecord(id){
   );
 
 
+  /*
+   * 未同期なら
+   * サーバーにまだ存在しない
+   */
+
   if(!r.synced){
 
     await del(
@@ -1134,38 +1955,57 @@ async function cancelRecord(id){
       id
     );
 
+
     msg(
-      "✓ 登録を取り消しました。取消ログは同期待ちです。"
+      "✓ 登録を取り消しました。\n取消ログは同期待ちです。"
     );
+
 
     render();
 
-    if(navigator.onLine)
+
+    if(
+      navigator.onLine
+    ){
+
       await syncData();
+
+    }
+
 
     return;
 
   }
 
 
-  r.cancelRequested=true;
+  /*
+   * 同期済みなら
+   * サーバー側削除を予約
+   */
+
+  r.cancelRequested=
+    true;
+
 
   await put(
     STORE,
     r
   );
 
+
   render();
 
 
-  if(navigator.onLine){
+  if(
+    navigator.onLine
+  ){
 
     await syncData();
 
   }else{
 
     msg(
-      "✓ 取消を予約しました。電波が戻ったら同期してください。"
+      "✓ 取消を予約しました。\n電波が戻ったら同期してください。"
     );
 
   }
@@ -1173,30 +2013,39 @@ async function cancelRecord(id){
 }
 
 
+/* =========================
+   Google Sheets同期
+========================= */
+
 async function syncData(){
 
-  if(!navigator.onLine)
+  if(!navigator.onLine){
 
     return msg(
       "現在オフラインです。電波が入ってから同期してください。",
       false
     );
 
+  }
+
 
   if(
     SYNC_URL.startsWith("ここに")
-  )
+  ){
 
     return msg(
       "SYNC_URLにCode.gsのWebアプリURLを設定してください。",
       false
     );
 
+  }
+
 
   const b=
     document.getElementById(
       "syncButton"
     );
+
 
   b.disabled=true;
 
@@ -1211,7 +2060,7 @@ async function syncData(){
 
 
     /*
-     * 通常の未同期データ
+     * 新規・修正後のデータ
      */
 
     const rows=
@@ -1223,23 +2072,24 @@ async function syncData(){
 
 
     /*
-     * 同期済みだが取消されたデータ
+     * 同期済みで
+     * 取消・修正されたデータ
      */
 
     const deletes=
       a
-        .filter(
-          r=>
-            r.synced &&
-            r.cancelRequested
-        )
-        .map(
-          r=>r.localId
-        );
+      .filter(
+        r=>
+          r.synced &&
+          r.cancelRequested
+      )
+      .map(
+        r=>r.localId
+      );
 
 
     /*
-     * 取消ログ
+     * 取消・修正ログ
      */
 
     const cancelLogs=
@@ -1270,6 +2120,7 @@ async function syncData(){
       await fetch(
         SYNC_URL,
         {
+
           method:"POST",
 
           headers:{
@@ -1291,23 +2142,26 @@ async function syncData(){
 
             })
 
-          }
-        );
+        }
+      );
+
 
     const j=
       await r.json();
 
 
-    if(!j.ok)
+    if(!j.ok){
+
       throw Error(
         j.message||
         "同期失敗"
       );
 
+    }
+
 
     /*
-     * 通常データを
-     * 同期済みに変更
+     * 新規データを同期済みに
      */
 
     for(
@@ -1315,6 +2169,7 @@ async function syncData(){
     ){
 
       x.synced=true;
+
 
       await put(
         STORE,
@@ -1325,8 +2180,8 @@ async function syncData(){
 
 
     /*
-     * 取消済みデータを
-     * 端末から削除
+     * 取消・修正された
+     * 元データを端末から削除
      */
 
     for(
@@ -1347,8 +2202,8 @@ async function syncData(){
 
 
     /*
-     * 取消ログを
-     * 同期済みとして削除
+     * 取消ログを端末から削除
+     * （Google Sheetsには残る）
      */
 
     for(
@@ -1363,31 +2218,40 @@ async function syncData(){
     }
 
 
+    let message="";
+
+
+    if(rows.length){
+
+      message+=
+        rows.length+
+        "件を同期しました。";
+
+    }
+
+
+    if(deletes.length){
+
+      message+=
+        "\n取消・修正 "+
+        deletes.length+
+        "件を反映しました。";
+
+    }
+
+
+    if(cancelLogs.length){
+
+      message+=
+        "\n取消ログ "+
+        cancelLogs.length+
+        "件を記録しました。";
+
+    }
+
+
     msg(
-
-      (
-        rows.length
-        ?rows.length+
-          "件を同期しました。"
-        :""
-      )+
-
-      (
-        deletes.length
-        ?"\n取消 "+
-          deletes.length+
-          "件を反映しました。"
-        :""
-      )+
-
-      (
-        cancelLogs.length
-        ?"\n取消ログ "+
-          cancelLogs.length+
-          "件を記録しました。"
-        :""
-      )
-
+      message
     );
 
 
@@ -1414,6 +2278,10 @@ async function syncData(){
 }
 
 
+/* =========================
+   オンライン・オフライン
+========================= */
+
 addEventListener(
   "online",
   status
@@ -1423,9 +2291,10 @@ addEventListener(
 addEventListener(
   "online",
   ()=>{
-    syncData().catch(
-      ()=>{}
-    );
+    syncData()
+      .catch(
+        ()=>{}
+      );
   }
 );
 
@@ -1436,31 +2305,47 @@ addEventListener(
 );
 
 
+/* =========================
+   起動
+========================= */
+
 addEventListener(
   "load",
   async()=>{
 
     status();
 
+
     await loadMaster();
+
 
     if(
       navigator.onLine &&
       !SYNC_URL.startsWith("ここに")
-    )
+    ){
+
       await syncMaster();
 
+    }
+
+
     await render();
+
 
     if(
       "serviceWorker"
       in navigator
-    )
+    ){
+
       navigator.serviceWorker
-        .register("sw.js")
+        .register(
+          "sw.js"
+        )
         .catch(
           ()=>{}
         );
+
+    }
 
   }
 );
